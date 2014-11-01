@@ -40,13 +40,6 @@ sound_choices = ['bike', 'bugle', 'cashregister', 'classical', 'cosmic',
                  'alien', 'climb', 'persistent', 'echo', 'updown', 'pushover',
                  'none']
 
-#try:
-#    APP_TOKEN
-#    USER_KEY
-#except NameError as e:
-#    print("Error: {e}".format(e=e))
-#    print("Edit this script to add your specific APP_TOKEN and USER_KEY")
-#    sys.exit(1)
 
 parser = argparse.ArgumentParser(prog=sys.argv[0],
                                  description='Send a notification message with Pushover',
@@ -110,6 +103,7 @@ if args.title:
     if len(args.title) + len(args.message) > 512:
         print("Error: Maximum length for title and message is 512 characters")
         sys.exit(3)
+    urlargs['title'] = args.title
 else:
     if len(args.message) > 512:
         print("Error: Maximum length for title and message is 512 characters")
@@ -139,8 +133,6 @@ if args.device:
 
     urlargs['device'] = args.device
 
-if args.title:
-    urlargs['title'] = args.title
 
 if args.url:
     urlargs['url'] = args.url
