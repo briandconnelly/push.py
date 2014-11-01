@@ -14,12 +14,18 @@ __status__ = "Beta"
 import argparse
 import ast
 import httplib
+import json
 import math
 import os
 import re
 import socket
 import sys
 import urllib
+
+try:
+    from httplib import HTTPSConnection
+except ImportError:
+    from http.client import HTTPSConnection
 
 
 def valid_app_token(token):
@@ -40,6 +46,20 @@ def valid_group_key(key):
 def valid_device_name(device):
     """Check if the given device name is in the right format"""
     return re.match(r'^[A-Za-z0-9_-]{1,25}$', device) != None
+
+
+def request(method, route, data={}):
+    sroute = '/'.join(['/1'] + route)
+    content = urllib.urlencode(data, {"Content-type": "application/x-www-form-urlencoded"})
+
+    try:
+        conn = HTTPSConnection("api.pushover.net:443")                      
+        conn.request(method, sroute, content)
+        response = conn.getresponse()                                               
+        data = json.loads(response.read().decode())
+        return (response.status, data)
+    except:
+        raise Exception("problem")
 
 
 def parse_arguments():                                                          
@@ -172,7 +192,6 @@ def main():
 
         urlargs['device'] = args.device
 
-
     if args.url:
         urlargs['url'] = args.url
 
@@ -182,40 +201,26 @@ def main():
     if args.timestamp:
         urlargs['timestamp'] = args.timestamp
 
-
-    conn = httplib.HTTPSConnection("api.pushover.net:443")
-    conn.request("POST", "/1/messages.json",
-    urllib.urlencode(urlargs, {"Content-type":
-                               "application/x-www-form-urlencoded"}))
-    response = conn.getresponse()
-    data = response.read()
-
     try:
-        data_parsed = ast.literal_eval(data)
-    except SyntaxError as s:
-        if args.request and response.status == 200:
-            print("Successfully sent message, however response could not be parsed")
-            sys.exit(6)
-        else:
-            print("Error: Message not sent, and could not parse response")
-            sys.exit(7)
+        (response_status, response_data) = request('POST', ['messages.json'],
+                                                  data=urlargs)
+    except:
+        print("Error: Could not connect to service")
+        sys.exit(21)
 
-    if response.status == 200:
+    if response_status == 200 and response_data['status'] == 1:
         if args.request:
-            print(data_parsed['request'])
-        sys.exit(0)
-    elif response.status == 429:
-        print("Error: message limit reached")
-        sys.exit(8)
-    elif math.floor(response.status/100) == 4:
-        # TODO: handle the other 4xx errors
-        # https://pushover.net/api#friendly
-        pass
+            print(response_data['request'])
+    elif response_status == 500:
+        print("Error: Unable to connect to service")
+        sys.exit(500)
+    elif response_status == 429:
+        print("Error: Message limit reached")
+        sys.exit(429)
     else:
-        print("Error: Received status code {c}".format(c=data_parsed['status']))
-        for e in data_parsed['errors']:
-              print("Error: {e}".format(e=e))
-        sys.exit(9)
+        for e in response_data['errors']:
+            print("Error: {e}".format(e=e))
+        sys.exit(99)
 
 
 if __name__ == "__main__":                                                      
