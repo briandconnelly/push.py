@@ -21,22 +21,35 @@ import socket
 import sys
 import urllib
 
+
 def valid_app_token(token):
+    """Check if the given app token is in the right format"""
     return re.match(r'^[a-zA-Z0-9]{30}$', token) != None
 
+
 def valid_user_key(key):
+    """Check if the given user key is in the right format"""
     return re.match(r'^[a-zA-Z0-9]{30}$', key) != None
 
+
 def valid_group_key(key):
+    """Check if the given group key is in the right format"""
     return valid_user_key(key)
 
+
 def valid_device_name(device):
+    """Check if the given device name is in the right format"""
     return re.match(r'^[A-Za-z0-9_-]{1,25}$', device) != None
+
 
 def parse_arguments():                                                          
     """Parse command line arguments"""
 
-    sound_choices = ['bike', 'bugle', 'cashregister', 'classical', 'cosmic', 'falling', 'gamelan', 'incoming', 'intermission', 'magic', 'mechanical', 'pianobar', 'siren', 'spacealarm', 'tugboat', 'alien', 'climb', 'persistent', 'echo', 'updown', 'pushover', 'none']
+    sound_choices = ['bike', 'bugle', 'cashregister', 'classical', 'cosmic',
+                     'falling', 'gamelan', 'incoming', 'intermission',
+                     'magic', 'mechanical', 'pianobar', 'siren', 'spacealarm',
+                     'tugboat', 'alien', 'climb', 'persistent', 'echo',
+                     'updown', 'pushover', 'none']
 
     parser = argparse.ArgumentParser(prog=sys.argv[0],
                                      description='Send a notification message with Pushover',
@@ -82,7 +95,9 @@ def parse_arguments():
                         default=3600, help='Expiration time (seconds) for '\
                         'emergency messages (default: 3600)')
 
-    parser.add_argument('message', help='Message to send')
+    #parser.add_argument('message', help='Message to send')
+    parser.add_argument('-m', '--message', metavar='M', help='message to' \
+                        ' be sent')
     args = parser.parse_args()
 
     return args
@@ -90,6 +105,14 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
+
+    if args.message is None:
+        message = ''
+        for line in sys.stdin:                                                          
+            message += line
+        message = message.rstrip()
+    else:
+        message = args.message
 
     token = args.token
     if token is None:
@@ -116,16 +139,16 @@ def main():
     urlargs = {"user": user, "token": token}
 
     if args.title:
-        if len(args.title) + len(args.message) > 512:
+        if len(args.title) + len(message) > 512:
             print("Error: Maximum length for title and message is 512 characters")
             sys.exit(3)
         urlargs['title'] = args.title
     else:
-        if len(args.message) > 512:
+        if len(message) > 512:
             print("Error: Maximum length for title and message is 512 characters")
             sys.exit(4)
 
-    urlargs['message'] = args.message
+    urlargs['message'] = message
     urlargs['priority'] = args.priority
 
     if args.priority == 2:
