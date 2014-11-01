@@ -2,28 +2,7 @@
 
 """push.py - Send a notification using Pushover"""
 
-# Alternatives: https://github.com/Wyattjoh/pushover (clean, nothing special)
-# https://pypi.python.org/pypi/pushnotify/0.5.1 (supports multiple notification systems)
-
-# TODO: command line options to validate API token or user key
-
-# TODO: message from stdin
-
-# TODO: validate url (512 char max)
-# - urlparse module?
-# TODO: validate url title (100 char max)
-
-# TODO: handle response (# messages remaining, etc)
-# TODO: handle callback urls
-# TODO: handle receipts
-
-# TODO: get KEYs from environment?
-# - or through command line
-# - or through config file (best option??)
-#   - if config file doesn't exist, you could prompt the user for those values
-#   and create one
-
-__version__ = '1.0'
+__version__ = '0.1'
 __author__ = "Brian Connelly"
 __copyright__ = "Copyright (c) 2014 Brian Connelly"
 __credits__ = ["Brian Connelly"]
@@ -35,6 +14,7 @@ __status__ = "Beta"
 import argparse
 import ast
 import httplib
+import math
 import re
 import socket
 import sys
@@ -101,6 +81,8 @@ apigroup.add_argument('--token', default='TODO', help='Application token '\
 pgroup = parser.add_argument_group(title='message priority (optional)',
                                    description='By default, messages send '\
                                    'with normal priority.')
+pgroup.add_argument('--silent', dest='priority', action='store_const',
+                    const=-2, help='send as lowest priority (-2)')
 pgroup.add_argument('--quiet', dest='priority', action='store_const',
                     const=-1, help='send as low priority (-1)')
 pgroup.add_argument('--normal', dest='priority', action='store_const',
@@ -185,7 +167,7 @@ if response.status == 200:
 elif response.status == 429:
     print("Error: message limit reached")
     sys.exit(4)
-elif floor(response.status/100) == 4:
+elif math.floor(response.status/100) == 4:
     # TODO: handle the other 4xx errors
     # https://pushover.net/api#friendly
     pass
