@@ -38,6 +38,11 @@ def valid_user_key(key):
     return re.match(r'^[a-zA-Z0-9]{30}$', key) != None
 
 
+def valid_message_receipt(receipt):
+    """Check if the given message receipt is in the right format"""
+    return re.match(r'^[a-zA-Z0-9]{30}$', receipt) != None
+
+
 def valid_group_key(key):
     """Check if the given group key is in the right format"""
     return valid_user_key(key)
@@ -88,6 +93,8 @@ def parse_arguments():
                         default='pushover', help='play specified sound (see below)')
     parser.add_argument('--request', action='store_true', default=False,
                         help='print request token on success')
+    parser.add_argument('--cancel', metavar='R', help='cancel emergency '\
+                        'message with receipt R')
 
     apigroup = parser.add_argument_group(title='Pushover API arguments (optional)',
                                          description='Specify user or API token')
@@ -126,14 +133,6 @@ def parse_arguments():
 def main():
     args = parse_arguments()
 
-    if args.message is None:
-        message = ''
-        for line in sys.stdin:                                                          
-            message += line
-        message = message.rstrip()
-    else:
-        message = args.message
-
     token = args.token
     if token is None:
         token = os.environ.get('PUSHPY_TOKEN')
@@ -157,6 +156,38 @@ def main():
         sys.exit(2)
 
     urlargs = {"user": user, "token": token}
+
+
+    # Cancel a message
+    if args.cancel is not None:
+        if not valid_message_receipt(args.cancel):
+            print("Error: Invalid message receipt")
+            sys.exit(41)
+
+        try:
+            (rstatus, rdata) = request('POST',
+                                       ['receipts', args.cancel, 'cancel.json'],
+                                       data=urlargs)
+        except:
+            print("Error: Could not connect to service")
+            sys.exit(21)
+
+        if rstatus == 200 and rdata['status'] == 1:
+            sys.exit(0)
+        else:
+            for e in rdata['errors']:
+                print("Error: {e}".format(e=e))
+            sys.exit(99)
+
+
+    if args.message is None:
+        message = ''
+        for line in sys.stdin:                                                          
+            message += line
+        message = message.rstrip()
+    else:
+        message = args.message
+
 
     if args.title:
         if len(args.title) + len(message) > 512:
@@ -201,6 +232,7 @@ def main():
     if args.timestamp:
         urlargs['timestamp'] = args.timestamp
 
+
     try:
         (response_status, response_data) = request('POST', ['messages.json'],
                                                   data=urlargs)
@@ -209,6 +241,8 @@ def main():
         sys.exit(21)
 
     if response_status == 200 and response_data['status'] == 1:
+        if args.priority == 2:
+            print(response_data['receipt'])
         if args.request:
             print(response_data['request'])
     elif response_status == 500:
