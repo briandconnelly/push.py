@@ -15,11 +15,11 @@ import argparse
 import ast
 import httplib
 import math
+import os
 import re
 import socket
 import sys
 import urllib
-
 
 def valid_app_token(token):
     return re.match(r'^[a-zA-Z0-9]{30}$', token) != None
@@ -60,10 +60,8 @@ parser.add_argument('--request', action='store_true', default=False,
 
 apigroup = parser.add_argument_group(title='Pushover API arguments (optional)',
                                      description='Specify user or API token')
-apigroup.add_argument('--user', default='TODO', help='Pushover user or group'\
-                      ' key (default: {x})'.format(x='TODO'))
-apigroup.add_argument('--token', default='TODO', help='Application token '\
-                      '(default: {x})'.format(x='TODO'))
+apigroup.add_argument('--user', help='Pushover user or group key')
+apigroup.add_argument('--token', help='Application token')
 
 pgroup = parser.add_argument_group(title='message priority (optional)',
                                    description='By default, messages send '\
@@ -89,15 +87,29 @@ pgroup.add_argument('-e', '--expire', dest='expire', type=int,
 parser.add_argument('message', help='Message to send')
 args = parser.parse_args()
 
-if not valid_app_token(args.token):
+token = args.token
+if token is None:
+    token = os.environ.get('PUSHPY_TOKEN')
+    if token is None:
+        print("Error: Must provide application token.")
+        sys.exit(11)
+
+if not valid_app_token(token):
     print("Error: Invalid application token")
     sys.exit(1)
 
-if not valid_user_key(args.user):
-    print("Error: Invalid user key")
+user = args.user
+if user is None:
+    user = os.environ.get('PUSHPY_USER')
+    if user is None:
+        print("Error: Must provide application token.")
+        sys.exit(11)
+
+if not valid_user_key(user):
+    print("Error: Invalid user/group key")
     sys.exit(2)
 
-urlargs = {"user": args.user, "token": args.token}
+urlargs = {"user": user, "token": token}
 
 if args.title:
     if len(args.title) + len(args.message) > 512:
