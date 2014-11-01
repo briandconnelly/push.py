@@ -22,25 +22,16 @@ import urllib
 
 
 def valid_app_token(token):
-    if re.match(r'^[a-zA-Z0-9]{30}$', token):
-        return True
-    else:
-        return False
+    return re.match(r'^[a-zA-Z0-9]{30}$', token) != None
 
 def valid_user_key(key):
-    if re.match(r'^[a-zA-Z0-9]{30}$', key):
-        return True
-    else:
-        return False
+    return re.match(r'^[a-zA-Z0-9]{30}$', key) != None
 
 def valid_group_key(key):
     return valid_user_key(key)
 
 def valid_device_name(device):
-    if re.match(r'^[A-Za-z0-9_-]{1,25}$', device):
-        return True
-    else:
-        return False
+    return re.match(r'^[A-Za-z0-9_-]{1,25}$', device) != None
 
 
 sound_choices = ['bike', 'bugle', 'cashregister', 'classical', 'cosmic',
