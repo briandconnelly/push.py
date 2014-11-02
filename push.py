@@ -2,7 +2,7 @@
 
 """push.py - Send a notification using Pushover"""
 
-__version__ = '0.1'
+__version__ = "0.1"
 __author__ = "Brian Connelly"
 __copyright__ = "Copyright (c) 2014 Brian Connelly"
 __credits__ = ["Brian Connelly"]
@@ -204,7 +204,7 @@ def main():
         else:
             for e in rdata['errors']:
                 print("Error: {e}".format(e=e))
-            sys.exit(99)
+            sys.exit(rdata['status'])
 
 
     # Cancel a message
@@ -224,9 +224,9 @@ def main():
         if rstatus == 200 and rdata["status"] == 1:
             sys.exit(0)
         else:
-            for e in rdata["errors"]:
+            for e in rdata['errors']:
                 print("Error: {e}".format(e=e))
-            sys.exit(99)
+            sys.exit(rdata["status"])
 
 
     if args.message is None:
@@ -306,7 +306,7 @@ def main():
     else:
         for e in response_data['errors']:
             print("Error: {e}".format(e=e))
-        sys.exit(99)
+        sys.exit(response_data['status'])
 
 
 if __name__ == "__main__":                                                      
