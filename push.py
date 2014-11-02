@@ -15,7 +15,6 @@ import argparse
 import ast
 import datetime
 import json
-import math
 import os
 import re
 import socket
@@ -126,6 +125,8 @@ def parse_arguments():
     pgroup.add_argument('-e', '--expire', dest='expire', type=int,
                         default=3600, help='Expiration time (seconds) for '\
                         'emergency messages (default: 3600)')
+    pgroup.add_argument('--callback', dest='callback', help='Callback URL for'\
+                        ' emergency messages')
 
     egroup = parser.add_argument_group(title='emergency message receipts ' \
                                        '(optional)')
@@ -184,7 +185,6 @@ def main():
             sys.exit(21)
 
         if rstatus == 200 and rdata['status'] == 1:
-            # {"status":1,"acknowledged":1,"acknowledged_at":1414888916,"acknowledged_by":"uywN7SbBsu5Kw1EkwuoKjbSd7gqYWG","last_delivered_at":1414888905,"expired":1,"expires_at":1414892475,"called_back":0,"called_back_at":0,"request":"d24a6d363f65d14437c0e5fb75a324bf"}
             print("Last Delivered At: {}".format(datetime.datetime.fromtimestamp(rdata["last_delivered_at"]).strftime('%Y-%m-%d %H:%M:%S %Z')))
             if rdata["acknowledged"] == 1:
                 print("Acknowledged At: {}".format(datetime.datetime.fromtimestamp(rdata["acknowledged_at"]).strftime('%Y-%m-%d %H:%M:%S %Z')))
@@ -262,6 +262,9 @@ def main():
 
         urlargs['retry'] = args.retry
         urlargs['expire'] = args.expire
+
+    if args.callback is not None and args.priority == 2:
+        urlargs['callback'] = args.callback
 
     urlargs['sound'] = args.sound
 
