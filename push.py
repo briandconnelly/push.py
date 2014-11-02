@@ -13,7 +13,7 @@ __status__ = "Beta"
 
 import argparse
 import ast
-import httplib
+import datetime
 import json
 import math
 import os
@@ -26,6 +26,11 @@ try:
     from httplib import HTTPSConnection
 except ImportError:
     from http.client import HTTPSConnection
+
+try:
+    from urllib import urlencode
+except ImportError:
+    from urllib.parse import urlencode
 
 
 def valid_app_token(token):
@@ -55,10 +60,10 @@ def valid_device_name(device):
 
 def request(method, route, data={}):
     sroute = '/'.join(['/1'] + route)
-    content = urllib.urlencode(data, {"Content-type": "application/x-www-form-urlencoded"})
+    content = urlencode(data, {"Content-type": "application/x-www-form-urlencoded"})
 
     try:
-        conn = HTTPSConnection("api.pushover.net:443")                      
+        conn = HTTPSConnection("api.pushover.net")
         conn.request(method, sroute, content)
         response = conn.getresponse()                                               
         data = json.loads(response.read().decode())
@@ -80,21 +85,21 @@ def parse_arguments():
                                      description='Send a notification message with Pushover',
                                      epilog='Available Sounds: {s}'.format(s=', '.join(sound_choices)))
     parser.add_argument('--version', action='version', version=__version__)
-    parser.add_argument('-d', '--device', metavar='D', help='send message to' \
+
+    mgroup = parser.add_argument_group(title='message arguments')
+    mgroup.add_argument('-d', '--device', metavar='D', help='send message to' \
                         ' specified device')
-    parser.add_argument('-t', '--title', metavar='t', help='message title')
-    parser.add_argument('-T', '--timestamp', metavar='T', help='send message ' \
+    mgroup.add_argument('-t', '--title', metavar='t', help='message title')
+    mgroup.add_argument('-T', '--timestamp', metavar='T', help='send message ' \
                         'specified UNIX timestamp', type=float)
-    parser.add_argument('-u', '--url', metavar='u',
+    mgroup.add_argument('-u', '--url', metavar='u',
                         help='supplementary URL for message')
-    parser.add_argument('-U', '--urltitle', metavar='U', help='title for '\
+    mgroup.add_argument('-U', '--urltitle', metavar='U', help='title for '\
                         'supplementary url')
-    parser.add_argument('-s', '--sound', metavar='S', choices=sound_choices,
+    mgroup.add_argument('-s', '--sound', metavar='S', choices=sound_choices,
                         default='pushover', help='play specified sound (see below)')
-    parser.add_argument('--request', action='store_true', default=False,
+    mgroup.add_argument('--request', action='store_true', default=False,
                         help='print request token on success')
-    parser.add_argument('--cancel', metavar='R', help='cancel emergency '\
-                        'message with receipt R')
 
     apigroup = parser.add_argument_group(title='Pushover API arguments (optional)',
                                          description='Specify user or API token')
@@ -122,9 +127,16 @@ def parse_arguments():
                         default=3600, help='Expiration time (seconds) for '\
                         'emergency messages (default: 3600)')
 
-    #parser.add_argument('message', help='Message to send')
-    parser.add_argument('-m', '--message', metavar='M', help='message to' \
-                        ' be sent')
+    egroup = parser.add_argument_group(title='emergency message receipts ' \
+                                       '(optional)')
+    egroup.add_argument('--receipt', metavar='R', help='check status of ' \
+                        'emergency message with receipt R')
+    egroup.add_argument('--cancel', metavar='R', help='cancel emergency '\
+                        'message with receipt R')
+
+    mgroup.add_argument('-m', '--message', metavar='message', help='message' \
+                        ' to be sent')
+
     args = parser.parse_args()
 
     return args
@@ -158,6 +170,43 @@ def main():
     urlargs = {"user": user, "token": token}
 
 
+    # Check the status of an emergency message
+    if args.receipt is not None:
+        if not valid_message_receipt(args.receipt):
+            print("Error: Invalid message receipt")
+            sys.exit(41)
+
+        try:
+            st = "{r}.json?token={t}".format(r=args.receipt, t=token)
+            (rstatus, rdata) = request("GET", ["receipts", st], data={})
+        except:
+            print("Error: Could not connect to service")
+            sys.exit(21)
+
+        if rstatus == 200 and rdata['status'] == 1:
+            # {"status":1,"acknowledged":1,"acknowledged_at":1414888916,"acknowledged_by":"uywN7SbBsu5Kw1EkwuoKjbSd7gqYWG","last_delivered_at":1414888905,"expired":1,"expires_at":1414892475,"called_back":0,"called_back_at":0,"request":"d24a6d363f65d14437c0e5fb75a324bf"}
+            print("Last Delivered At: {}".format(datetime.datetime.fromtimestamp(rdata["last_delivered_at"]).strftime('%Y-%m-%d %H:%M:%S %Z')))
+            if rdata["acknowledged"] == 1:
+                print("Acknowledged At: {}".format(datetime.datetime.fromtimestamp(rdata["acknowledged_at"]).strftime('%Y-%m-%d %H:%M:%S %Z')))
+                print("Acknowledged By: {}".format(rdata["acknowledged_by"]))
+            else:
+                print("Not Acknowledged")
+
+            if rdata["expired"]:
+                print("Expired At: {}".format(datetime.datetime.fromtimestamp(rdata["expires_at"]).strftime('%Y-%m-%d %H:%M:%S %Z')))
+            else:
+                print("Expires At: {}".format(datetime.datetime.fromtimestamp(rdata["expires_at"]).strftime('%Y-%m-%d %H:%M:%S %Z')))
+
+            if rdata["called_back"] == 1:
+                print("Called Back At: {}".format(datetime.datetime.fromtimestamp(rdata["called_back_at"]).strftime('%Y-%m-%d %H:%M:%S %Z')))
+
+            sys.exit(0)
+        else:
+            for e in rdata['errors']:
+                print("Error: {e}".format(e=e))
+            sys.exit(99)
+
+
     # Cancel a message
     if args.cancel is not None:
         if not valid_message_receipt(args.cancel):
@@ -165,17 +214,17 @@ def main():
             sys.exit(41)
 
         try:
-            (rstatus, rdata) = request('POST',
-                                       ['receipts', args.cancel, 'cancel.json'],
+            (rstatus, rdata) = request("POST",
+                                       ["receipts", args.cancel, "cancel.json"],
                                        data=urlargs)
         except:
             print("Error: Could not connect to service")
             sys.exit(21)
 
-        if rstatus == 200 and rdata['status'] == 1:
+        if rstatus == 200 and rdata["status"] == 1:
             sys.exit(0)
         else:
-            for e in rdata['errors']:
+            for e in rdata["errors"]:
                 print("Error: {e}".format(e=e))
             sys.exit(99)
 
