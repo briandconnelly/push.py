@@ -135,8 +135,7 @@ def parse_arguments():
     egroup.add_argument('--cancel', metavar='R', help='cancel emergency '\
                         'message with receipt R')
 
-    mgroup.add_argument('-m', '--message', metavar='message', help='message' \
-                        ' to be sent')
+    mgroup.add_argument('message', nargs='?', help='Message to send')
 
     args = parser.parse_args()
 
