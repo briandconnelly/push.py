@@ -99,6 +99,8 @@ def parse_arguments():
                         default='pushover', help='play specified sound (see below)')
     mgroup.add_argument('--request', action='store_true', default=False,
                         help='print request token on success')
+    mgroup.add_argument('--validate', action='store_true', default=False,
+                        help='validate the given user token (and device)')
 
     apigroup = parser.add_argument_group(title='Pushover API arguments (optional)',
                                          description='Specify user or API token')
@@ -227,6 +229,35 @@ def main():
                 print("Error: {e}".format(e=e))
             sys.exit(rdata["status"])
 
+    if args.device:
+        if not valid_device_name(args.device):
+            print("Error: Invalid device name")
+            sys.exit(5)
+
+        urlargs['device'] = args.device
+
+    # Validate the user/group key and device (optional)
+    if args.validate:
+        try:
+            (rstatus, rdata) = request("POST",
+                                       ["users", "validate.json"],
+                                       data=urlargs)
+        except:
+            print("Error: Could not connect to service")
+            sys.exit(21)
+
+        if rstatus == 200 and rdata["status"] == 1:
+            if args.device:
+                print("Valid user/group and device")
+            else:
+                print("Valid user/group")
+
+            sys.exit(0)
+        else:
+            for e in rdata['errors']:
+                print("Error: {e}".format(e=e))
+            sys.exit(rdata["status"])
+
 
     if args.message is None:
         message = ''
@@ -266,13 +297,6 @@ def main():
         urlargs['callback'] = args.callback
 
     urlargs['sound'] = args.sound
-
-    if args.device:
-        if not valid_device_name(args.device):
-            print("Error: Invalid device name")
-            sys.exit(5)
-
-        urlargs['device'] = args.device
 
     if args.url:
         urlargs['url'] = args.url
