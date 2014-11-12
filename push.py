@@ -308,6 +308,7 @@ def main():
         urlargs['timestamp'] = args.timestamp
 
 
+    # Send a message
     try:
         (response_status, response_data) = request('POST', ['messages.json'],
                                                   data=urlargs)
