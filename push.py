@@ -57,21 +57,23 @@ def valid_device_name(device):
     return re.match(r'^[A-Za-z0-9_-]{1,25}$', device) != None
 
 
-def request(method, route, data={}):
+def request(method, route, data=None):
+    if data is None:
+        data = {}
     sroute = '/'.join(['/1'] + route)
     content = urlencode(data, {"Content-type": "application/x-www-form-urlencoded"})
 
     try:
         conn = HTTPSConnection("api.pushover.net")
         conn.request(method, sroute, content)
-        response = conn.getresponse()                                               
+        response = conn.getresponse()
         data = json.loads(response.read().decode())
         return (response.status, data)
     except:
         raise Exception("problem")
 
 
-def parse_arguments():                                                          
+def parse_arguments():
     """Parse command line arguments"""
 
     sound_choices = ['bike', 'bugle', 'cashregister', 'classical', 'cosmic',
@@ -179,8 +181,9 @@ def main():
             sys.exit(41)
 
         try:
-            st = "{r}.json?token={t}".format(r=args.receipt, t=token)
-            (rstatus, rdata) = request("GET", ["receipts", st], data={})
+            st_query = "{r}.json?token={t}".format(r=args.receipt, t=token)
+            (rstatus, rdata) = request("GET", ["receipts", st_query],
+                                       data=None)
         except:
             print("Error: Could not connect to service")
             sys.exit(21)
@@ -203,8 +206,8 @@ def main():
 
             sys.exit(0)
         else:
-            for e in rdata['errors']:
-                print("Error: {e}".format(e=e))
+            for error in rdata['errors']:
+                print("Error: {e}".format(e=error))
             sys.exit(rdata['status'])
 
 
@@ -225,8 +228,8 @@ def main():
         if rstatus == 200 and rdata["status"] == 1:
             sys.exit(0)
         else:
-            for e in rdata['errors']:
-                print("Error: {e}".format(e=e))
+            for error in rdata['errors']:
+                print("Error: {e}".format(e=error))
             sys.exit(rdata["status"])
 
     if args.device:
@@ -254,14 +257,14 @@ def main():
 
             sys.exit(0)
         else:
-            for e in rdata['errors']:
-                print("Error: {e}".format(e=e))
+            for error in rdata['errors']:
+                print("Error: {e}".format(e=error))
             sys.exit(rdata["status"])
 
 
     if args.message is None:
         message = ''
-        for line in sys.stdin:                                                          
+        for line in sys.stdin:
             message += line
         message = message.rstrip()
     else:
@@ -270,12 +273,12 @@ def main():
 
     if args.title:
         if len(args.title) + len(message) > 512:
-            print("Error: Maximum length for title and message is 512 characters")
+            print("Error: Exceeded maximum length for title and message")
             sys.exit(3)
         urlargs['title'] = args.title
     else:
         if len(message) > 512:
-            print("Error: Maximum length for title and message is 512 characters")
+            print("Error: Exceeded maximum length for title and message")
             sys.exit(4)
 
     urlargs['message'] = message
@@ -311,7 +314,7 @@ def main():
     # Send a message
     try:
         (response_status, response_data) = request('POST', ['messages.json'],
-                                                  data=urlargs)
+                                                   data=urlargs)
     except:
         print("Error: Could not connect to service")
         sys.exit(21)
@@ -328,11 +331,11 @@ def main():
         print("Error: Message limit reached")
         sys.exit(429)
     else:
-        for e in response_data['errors']:
-            print("Error: {e}".format(e=e))
+        for error in response_data['errors']:
+            print("Error: {e}".format(e=error))
         sys.exit(response_data['status'])
 
 
-if __name__ == "__main__":                                                      
+if __name__ == "__main__":
     main()
 
